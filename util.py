@@ -1,10 +1,21 @@
+"""
+MODULES:
+--------
+"""
 import math
 import numpy as np
 import matplotlib.pyplot as plt
 from util_fig import myfigure        # plotting routine from Steven
 
+from scipy.stats import uniform as Unif
+from scipy.stats import norm as Norm
+from scipy.stats import multivariate_normal as mvNorm
 
 
+"""
+FUNCTIONS:
+----------
+"""
 def uxt(x,t,lam):
     """
     Evaluation of the function
@@ -14,16 +25,17 @@ def uxt(x,t,lam):
     Parameters:
     -----------
     x : array_like
-        spatial locations at which function is to be evaluated
+        Spatial locations at which function is to be evaluated.
     t : array_like
-        time points at which function is to be evaluated
+        Time points at which function is to be evaluated.
     lam : float
-        value of the thermal conductivity parameter
+        Value of the thermal conductivity parameter.
 
     Returns:
     --------
     uxt : ndarray
-        value of the function u at each point in x and time in t for the given value of lambda
+        Value of the function u at each point in x and time in t for the given
+        value of lambda.
     """
 
     # Spatial locations.
@@ -36,10 +48,132 @@ def uxt(x,t,lam):
     return np.outer(T, X)
 
 
+def m_s_from_mu_sig(mu,sig):
+    """
+    Convert hyperparameters (mu,sigma) of Gaussian distribution to (m,s)
+    defining the logNormal distrubtion such that
+        Y = exp(X): X~N(m,s^2); Y~logN(mu,sigma^2).
 
-# Default example.
+    Parameters:
+    -----------
+    mu : float
+        Mean of the Gaussian distribution.
+    sigma : float
+        Standard deviation of the Gaussian distribution.
+
+    Returns:
+    --------
+    m : float
+
+    s : float
+
+    """
+
+    # Constant common to both variables.
+    c = 1 + np.power(sig/mu,2)
+
+    # Compute m and s.
+    m = np.log(mu/np.sqrt(c))
+    s = np.sqrt(np.log(c))
+
+    return m,s
+
+
+def posterior(theta, prior, ip_data):
+    """
+    Posterior density function.
+
+    # NOTE: Could vectorise this to take an array of theta values.
+
+    # NOTE 2: could be more efficient by computing posterior only if required.
+
+    Parameters:
+    -----------
+    theta : float
+        Unknown (logarithm of) thermal diffusivity.
+    prior : array_like ([dist_type, param1, param2])
+        Vector defining the prior distribution through the dist_type ('normal'
+        or 'unif'), and two parameters (floats, mean and std for Gaussian, LHS
+        and range for Uniform).
+    ip_data : dictionary
+        Parameters defining the inverse problem.
+
+    Returns:
+    --------
+    posterior : float
+        Value of the (un-normalised) posterior density evaluated at the input
+        theta.
+    prior : float
+        Value of the prior density evaluated at the input theta.
+    likelihood : float
+        Value of the likelihood function evaluated at the input theta.
+    """
+
+    # Prior density.
+    if prior[0] == "unif":
+        p0 = Unif.pdf(theta, prior[1], prior[2]-prior[1])  # Uniform pdf
+    elif prior[0] == "normal":
+        p0 = Norm.pdf(theta, prior[1], prior[2]) # Gaussian pdf
+
+    # Forward evaluation.
+    F = uxt(ip_data['x_obs'], ip_data['t_obs'], np.exp(theta)).ravel()
+
+    # Evaluate likelihood (multivariate Normal).
+    L = mvNorm.pdf(F, ip_data['d'], ip_data['sig_rho'])
+
+    # Return evaluation of the posterior, prior and likelihood.
+    return p0*L, p0, L
+
+
+
+def plot_posterior(prior, Nt=10):
+    """
+    Description goes here.
+    """
+
+    # Theta values for evaluating the posterior.
+    tv = np.linspace(0,3,Nt)
+
+    # Allocate storage for likelihood and posterior evaluations.
+    p0v = np.zeros(Nt)   # prior evaluations
+    Lv = np.zeros(Nt)    # likelihood evaluations
+
+    # Evaluate prior and likelihood.
+    for n in range(Nt):
+        ptrint(n)
+        dummy_var, p0v[n], Lv[n] = posterior(tv[n], prior, ip_data)
+
+    # Evaluate posterior.
+    pv = p0v*Lv
+
+    # Normalise.
+    p0v = p0v/np.trapz(p0v,tv)
+    Lv = Lv/np.trapz(Lv,tv)
+    pv = pv/np.trapz(pv,tv)
+
+    # Plot.
+    fig, ax = myfigure()
+    ax.plot(tv, pv, label='posterior')
+    ax.plot(tv, Lv, label='likelihood')
+    ax.plot(tv, p0, label='prior')
+    ax.set_xlabel('theta')
+    ax.set_ylabel('probability density')
+    leg = ax.legend();
+    plt.show()
+
+
+
+
+
+
+
+
+
+# Default example execution of the functions.
 if __name__ == "__main__":
+    ## ----------------
     ## DATA COMPONENTS:
+    ## ----------------
 
     # Time.
     ip_data = {
@@ -81,7 +215,9 @@ if __name__ == "__main__":
         print(key, ip_data[key])
 
 
+    ## ----------
     ## PLOT DATA:
+    ## ----------
 
     # Matrix representation of noisy data.
     d_mat = np.reshape(ip_data["d"],(ip_data["nt"],ip_data["nx"]))
@@ -107,3 +243,17 @@ if __name__ == "__main__":
         axi.axis([0, 1, 0, 3])
 
     plt.show()
+
+
+    ## ---------------
+    ## PLOT DOSTERIOR:
+    ## ---------------
+
+    # Prior parameters
+    m, s = m_s_from_mu_sig(4,1)
+    prior = ["normal", m, s]
+
+    print(m)
+    print(s)
+
+    plot_posterior(prior,200)
