@@ -1,80 +1,109 @@
+import math
 import numpy as np
-import matplotlib as mpl
-import matplotlib.font_manager
+import matplotlib.pyplot as plt
+from util_fig import myfigure        # plotting routine from Steven
 
-# Obtained from Steven Elsworth at ABBA GitHub.
 
-def myfigure(nrows=1, ncols=1, fig_ratio=0.71, fig_scale=1):
+
+def uxt(x,t,lam):
     """
-    Parameters
-    ----------
-    nrows - int
-        Number of rows (subplots)
-    ncols - int
-        Number of columns (subplots)
-    fig_ratio - float
-        Ratio between height and width
-    fig_scale - float
-        Scaling which magnifies font size
-    Returns
-    -------
-    fig - matplotlib figure handle
-    ax -  tuple of matplotlib axis handles
-    Example
-    -------
-    from util import myfigure
-    fig, (ax1, ax2) = myfigure(nrows=2, ncols=1)
+    Evaluation of the function
+        u(x,t;lambda) = (3sin(pi*x) + sin(3*pi*x))exp(-lambda*pi^2*t),
+    which is the solution to the forward problem PDE.
+
+    Parameters:
+    -----------
+    x : array_like
+        spatial locations at which function is to be evaluated
+    t : array_like
+        time points at which function is to be evaluated
+    lam : float
+        value of the thermal conductivity parameter
+
+    Returns:
+    --------
+    uxt : ndarray
+        value of the function u at each point in x and time in t for the given value of lambda
     """
-    size = 7
 
-    l = 13.2/2.54
-    fig, ax = mpl.pyplot.subplots(nrows=nrows, ncols=ncols, figsize=(l/fig_scale, l*fig_ratio/fig_scale), dpi=80*fig_scale, facecolor='w', edgecolor='k')
-    mpl.pyplot.subplots_adjust(left=0.11*fig_scale, right=1-0.05*fig_scale, bottom=0.085*fig_scale/fig_ratio, top=1-0.05*fig_scale/fig_ratio)
-    
-    mpl.rcParams["figure.figsize"] = (20,10)
+    # Spatial locations.
+    X = np.array(3*np.sin(np.pi*x) + np.sin(3*np.pi*x))
 
-    # Use tex and correct font
+    # Time points.
+    T = np.array(np.exp(-lam * math.pow(np.pi,2) * t))
 
-    mpl.rcParams['font.serif'] = ['computer modern roman']
-    mpl.rcParams['mathtext.fontset'] = 'custom'
-    mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-    mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-    mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
-    mpl.rcParams['font.size'] = size
+    # Compute solution through outer product and return values.
+    return np.outer(T, X)
 
-    # MATLAB default (see MATLAB Axes Properties documentation)
-    mpl.rcParams['legend.fontsize'] = size
 
-    # remove margine padding on axis
-    mpl.rcParams['axes.xmargin'] = 0
-    mpl.rcParams['axes.ymargin'] = 0
 
-    mpl.pyplot.tight_layout(pad=1.3) # padding
+# Default example.
+if __name__ == "__main__":
+    ## DATA COMPONENTS:
 
-    # Save fig with transparent background
-    mpl.rcParams['savefig.transparent'] = True
+    # Time.
+    ip_data = {
+        'T': 0.05,  # final time
+        'nt': 3     # number of temporal measurements
+    }
+    ip_data['t_obs'] = ip_data['T']*np.arange(1,ip_data['nt']+1)/ip_data['nt']   # measurement times
 
-    # Make legend frame border black and face white
-    mpl.rcParams['legend.edgecolor'] = 'k'
-    mpl.rcParams['legend.facecolor'] = 'w'
-    mpl.rcParams['legend.framealpha'] = 1
 
-    # Change colorcycle to MATLABS
-    c = mpl.cycler(color=['#0072BD', '#D95319', '#EDB120', '#7E2F8E', '#77AC30', '#4DBEEE', '#A2142F'])
+    # Space
+    ip_data['nx'] = 4                                                   # number of spatial measurements
+    ip_data['x_obs'] = np.arange(1,ip_data['nx']+1)/(1+ip_data['nx'])   # observation locations
 
-    
-    
-    if isinstance(ax, np.ndarray):
-        ax = ax.ravel()
-        for axi in ax:
-            axi.set_prop_cycle(c) # color cycle
-            axi.xaxis.label.set_size(1.1*size) # xaxis font size
-            axi.yaxis.label.set_size(1.1*size) # yaxis font size
-            axi.tick_params(axis='both', which='both', labelsize=size, direction='in') # fix ticks
-    else:
-        ax.set_prop_cycle(c) # color cycle
-        ax.tick_params(axis='both', which='both', labelsize=size, direction='in') # fix ticks
-        ax.xaxis.label.set_size(1.1*size) # xaxis font size
-        ax.yaxis.label.set_size(1.1*size) # yaxis font size
 
-    return fig, ax
+    # Spatial locations (plotting).
+    x = np.linspace(0,1,50)
+
+
+    # True observations.
+    ip_data['lam'] = 5*np.pi/3                                                     # thermal conductivity
+    ip_data['G'] = uxt(ip_data['x_obs'],ip_data['t_obs'],ip_data['lam']).ravel()   # true obs
+    ip_data['nd'] = ip_data['nx']*ip_data['nt']                                    # number of obs
+
+
+    # Noise.
+    ip_data['seed'] = 0                                                           # seed RNG
+    np.random.seed(0)
+    ip_data['noise_ratio'] = 5/100                                                    # 5% signal-noise ratio
+    ip_data['sig_rho'] = np.sqrt(ip_data['noise_ratio'] * np.mean(ip_data['G']))      # noise std
+    ip_data['rho_noise'] = np.random.normal(0,ip_data['sig_rho'],(ip_data['nd'],1)).ravel()   # noise value
+
+
+    # Noisy data.
+    ip_data['d'] = ip_data['G'] + ip_data['rho_noise']
+
+
+    # Print dictionary to screen.
+    for key in ip_data:
+        print(key, ip_data[key])
+
+
+    ## PLOT DATA:
+
+    # Matrix representation of noisy data.
+    d_mat = np.reshape(ip_data["d"],(ip_data["nt"],ip_data["nx"]))
+
+    # Labels for y-axes.
+    ylabs = ['u(x,0)', 'u(x,T/3)','u(x,2T/3)','u(x,T)']
+
+    # Initiate 2x2 plot.
+    fig, ax = myfigure(nrows=2, ncols=2)
+
+    for i,axi in enumerate(ax):
+
+        if i == 0:
+            # Initial data.
+            axi.plot(x, np.squeeze(uxt(x,0,ip_data['lam'])))
+        else:
+            # Measurement times data.
+            axi.plot(x, np.squeeze(uxt(x,ip_data['t_obs'][i-1],ip_data['lam'])))
+            axi.plot(ip_data['x_obs'], d_mat[i-1,:], 'xr')
+
+        axi.set_xlabel('x')
+        axi.set_ylabel(ylabs[i])
+        axi.axis([0, 1, 0, 3])
+
+    plt.show()
