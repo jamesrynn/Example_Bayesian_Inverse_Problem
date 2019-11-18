@@ -140,7 +140,7 @@ def plot_posterior(prior, Nt=10):
 
     # Evaluate prior and likelihood.
     for n in range(Nt):
-        ptrint(n)
+        #print(n)
         dummy_var, p0v[n], Lv[n] = posterior(tv[n], prior, ip_data)
 
     # Evaluate posterior.
@@ -155,7 +155,7 @@ def plot_posterior(prior, Nt=10):
     fig, ax = myfigure()
     ax.plot(tv, pv, label='posterior')
     ax.plot(tv, Lv, label='likelihood')
-    ax.plot(tv, p0, label='prior')
+    ax.plot(tv, p0v, label='prior')
     ax.set_xlabel('theta')
     ax.set_ylabel('probability density')
     leg = ax.legend();
@@ -242,11 +242,11 @@ if __name__ == "__main__":
         axi.set_ylabel(ylabs[i])
         axi.axis([0, 1, 0, 3])
 
-    plt.show()
+    plt.show(block=False)
 
 
     ## ---------------
-    ## PLOT DOSTERIOR:
+    ## PLOT POSTERIOR:
     ## ---------------
 
     # Prior parameters
