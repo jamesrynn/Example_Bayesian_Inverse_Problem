@@ -1,21 +1,24 @@
-"""
-MODULES:
---------
-"""
+
+###########################
+###  ---  MODULES  ---  ###
+###########################
 import math
 import numpy as np
 import matplotlib.pyplot as plt
-from util_fig import myfigure        # plotting routine from Steven
+
+import pickle
 
 from scipy.stats import uniform as Unif
 from scipy.stats import norm as Norm
 from scipy.stats import multivariate_normal as mvNorm
 
+from util_fig import myfigure        # plotting routine from Steven
 
-"""
-FUNCTIONS:
-----------
-"""
+
+#############################
+###  ---  FUNCTIONS  ---  ###
+#############################
+
 def uxt(x,t,lam):
     """
     Evaluation of the function
@@ -46,6 +49,8 @@ def uxt(x,t,lam):
 
     # Compute solution through outer product and return values.
     return np.outer(T, X)
+################################################################################
+
 
 
 def m_s_from_mu_sig(mu,sig):
@@ -77,6 +82,8 @@ def m_s_from_mu_sig(mu,sig):
     s = np.sqrt(np.log(c))
 
     return m,s
+################################################################################
+
 
 
 def posterior(theta, prior, ip_data):
@@ -123,12 +130,28 @@ def posterior(theta, prior, ip_data):
 
     # Return evaluation of the posterior, prior and likelihood.
     return p0*L, p0, L
+################################################################################
 
 
 
-def plot_posterior(prior, Nt=10):
+def plot_posterior(prior, Nt=100):
     """
-    Description goes here.
+    Plot the true (analytic) posterior density function along with the likelihood,
+    prior and true value of theta.
+
+    Parameters:
+    -----------
+    prior : array_like ([dist_type, param1, param2])
+        Vector defining the prior distribution through the dist_type ('normal'
+        or 'unif'), and two parameters (floats, mean and std for Gaussian, LHS
+        and range for Uniform).
+    Nt : int
+        Number of points at which to evaluate each density function.
+
+    Returns:
+    --------
+    Plot the true (analytic) posterior density function along with the likelihood,
+    prior and true value of theta.
     """
 
     # Theta values for evaluating the posterior.
@@ -156,15 +179,43 @@ def plot_posterior(prior, Nt=10):
     ax.plot(tv, pv, label='posterior')
     ax.plot(tv, Lv, label='likelihood')
     ax.plot(tv, p0v, label='prior')
-    plt.axvline(x=np.log(ip_data['lam']))
+    plt.axvline(x=np.log(ip_data['lam']), color='c', label='truth')
     ax.set_xlabel('theta')
     ax.set_ylabel('probability density')
     leg = ax.legend();
     plt.show(block=False)
+################################################################################
+
+
 
 def rwmh_posterior(N, NB, prior, ip_data, sig_q):
     """
-    DESCRIPTION GOES HERE
+    Sample from the posterior distribution using Random Walk Metropolis-Hastings
+    MCMC.
+
+    Parameters:
+    -----------
+    N : int
+        Number of samples required.
+    NB : int
+        Number of burn-in samples.
+    prior : array_like ([dist_type, param1, param2])
+        Vector defining the prior distribution through the dist_type ('normal'
+        or 'unif'), and two parameters (floats, mean and std for Gaussian, LHS
+        and range for Uniform).
+    ip_data : dictionary
+        Parameters defining the inverse problem.
+    sig_q : float
+        Standard deviation of the proposal distribution.
+
+    Returns:
+    --------
+    chain : array
+        Samples from the posterior distribution.
+    prop : float
+        Proportion of accepted proposals.
+    tvec : array
+        Samples from posterior including burn-in.
     """
 
     # Storage for the sampled values of theta.
@@ -232,12 +283,26 @@ def rwmh_posterior(N, NB, prior, ip_data, sig_q):
 
     # Output chain, proportion and full chain (with burn-in included).
     return chain, prop, tvec
+################################################################################
+
 
 
 def hist_plot(chain, nbins=100):
     """
-    FUNCTION DESCRIPTION:
+    Plot a histogram of the input Markov chain.
+
+    Parameters:
+    -----------
+    chain : array
+        Samples from the posterior distribution.
+    nbins = int
+        Number of histogram bins.
+
+    Returns:
+    --------
+    Plot a histogram of the input Markov chain.
     """
+
     # Compute histogram.
     hist, bin_edges = np.histogram(chain, nbins, density=1)
 
@@ -248,64 +313,44 @@ def hist_plot(chain, nbins=100):
     # Plot histogram manually.
     fig, ax = myfigure()
     ax.plot(bin_centres, hist, label='posterior')
-    plt.axvline(x=np.log(ip_data['lam']))
+    plt.axvline(x=np.log(ip_data['lam']), color='r', label='truth')
     ax.set_xlabel('theta')
     ax.set_ylabel('probability density')
     leg = ax.legend();
     plt.show()
+################################################################################
 
 
 
 
-# Default example execution of the functions.
+#####################################
+###  ---  EXAMPLE EXECUTION  ---  ###
+#####################################
+
 if __name__ == "__main__":
+
     ## ----------------
     ## DATA COMPONENTS:
     ## ----------------
 
-    # Time.
-    ip_data = {
-        'T': 0.05,  # final time
-        'nt': 3     # number of temporal measurements
-    }
-    ip_data['t_obs'] = ip_data['T']*np.arange(1,ip_data['nt']+1)/ip_data['nt']   # measurement times
-
-
-    # Space
-    ip_data['nx'] = 4                                                   # number of spatial measurements
-    ip_data['x_obs'] = np.arange(1,ip_data['nx']+1)/(1+ip_data['nx'])   # observation locations
-
-
-    # Spatial locations (plotting).
-    x = np.linspace(0,1,50)
-
-
-    # True observations.
-    ip_data['lam'] = 5*np.pi/3                                                     # thermal conductivity
-    ip_data['G'] = uxt(ip_data['x_obs'],ip_data['t_obs'],ip_data['lam']).ravel()   # true obs
-    ip_data['nd'] = ip_data['nx']*ip_data['nt']                                    # number of obs
-
-
-    # Noise.
-    ip_data['seed'] = 8992                                                           # seed RNG
-    np.random.seed(ip_data['seed'])
-    ip_data['noise_ratio'] = 2/100                                                    # 5% signal-noise ratio
-    ip_data['sig_rho'] = np.sqrt(ip_data['noise_ratio'] * np.mean(ip_data['G']))      # noise std
-    ip_data['rho_noise'] = np.random.normal(0,ip_data['sig_rho'],(ip_data['nd'],1)).ravel()   # noise value
-
-
-    # Noisy data.
-    ip_data['d'] = ip_data['G'] + ip_data['rho_noise']
+    # Unpickle the inverse problem data.
+    pickle_in = open("ip_data.pickle","rb")
+    ip_data = pickle.load(pickle_in)
 
 
     # Print dictionary to screen.
     for key in ip_data:
         print(key, ip_data[key])
+################################################################################
+
 
 
     ## ----------
     ## PLOT DATA:
     ## ----------
+
+    # Spatial locations (plotting).
+    x = np.linspace(0,1,50)
 
     # Matrix representation of noisy data.
     d_mat = np.reshape(ip_data['d'],(ip_data['nt'],ip_data['nx']))
@@ -331,6 +376,8 @@ if __name__ == "__main__":
         axi.axis([0, 1, 0, 3])
 
     plt.show(block=False)
+    ############################################################################
+
 
 
     ## ---------------
@@ -345,6 +392,7 @@ if __name__ == "__main__":
     print(s)
 
     plot_posterior(prior,200)
+    ############################################################################
 
 
 
@@ -352,14 +400,15 @@ if __name__ == "__main__":
     # SAMPLE USING RWMH MCMC:
     # -----------------------
 
-    NB = int(1e4)  # no. burn in samples
-    N = int(1e5)   # no samples
+    NB = int(1e3)  # number of burn in samples
+    N = int(1e5)   # number of samples
 
     nbins = 100  # number of histogram bins
 
     sig_q = 5.5e-1  # proposal standard deviation
 
     chain, prop, tvec = rwmh_posterior(N, NB, prior, ip_data, sig_q)
+    ############################################################################
 
 
 
@@ -371,18 +420,23 @@ if __name__ == "__main__":
     ran_ind = np.random.randint(1,N-1002)
     chain_plot = chain[ran_ind:ran_ind+1000]
 
-    # Plot section of chain.
+
+    # Plot chosen section of chain.
     fig, ax = myfigure()
-    ax.plot(range(1,1001), chain_plot)
-    plt.axhline(y=np.log(ip_data['lam']))
+    ax.plot(range(ran_ind,ran_ind+1000), chain_plot)
+    plt.axhline(y=np.log(ip_data['lam']), color='r', label='truth')
     ax.set_xlabel('iterate, n')
     ax.set_ylabel('theta')
     plt.show(block=False)
+    ############################################################################
 
 
 
     # ---------------
-    # Plot Histogram:
+    # PLOT HISTOGRAM:
     # ---------------
 
+
+    # Plot histogram of chain using default number of bins.
     hist_plot(chain)
+    ############################################################################

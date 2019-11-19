@@ -1,7 +1,6 @@
 # NOTE:
 # Obtained from Steven Elsworth via UoM NLA group at https://github.com/nla-group/ABBA.
 
-
 import numpy as np
 import matplotlib as mpl
 import matplotlib.font_manager
