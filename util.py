@@ -156,15 +156,103 @@ def plot_posterior(prior, Nt=10):
     ax.plot(tv, pv, label='posterior')
     ax.plot(tv, Lv, label='likelihood')
     ax.plot(tv, p0v, label='prior')
+    plt.axvline(x=np.log(ip_data['lam']))
+    ax.set_xlabel('theta')
+    ax.set_ylabel('probability density')
+    leg = ax.legend();
+    plt.show(block=False)
+
+def rwmh_posterior(N, NB, prior, ip_data, sig_q):
+    """
+    DESCRIPTION GOES HERE
+    """
+
+    # Storage for the sampled values of theta.
+    tvec = np.zeros(N+NB)
+
+
+    # Initialise counter for number of accepted samples.
+    count = 0
+
+
+    # Initial state
+    tvec[0] = np.log(ip_data['lam'])  # true value
+
+    # Evaluate posterior at initial state.
+    post, dummy1, dummy2 = posterior(tvec[0],prior,ip_data)
+
+
+    # Monte Carlo loop.
+    for n in range(NB+N-1):
+
+        # Generate proposal.
+        t_p = Norm.rvs(tvec[n],sig_q)
+
+        # Evaluate posterior at proposal.
+        post_p, dummy1, dummy2 = posterior(t_p, prior, ip_data)
+
+        # Compute acceptance probability.
+        alpha = min(1, post_p/post)
+
+        # Accept/reject step.
+        z = Unif.rvs()
+        if z < alpha:
+            # Accept and update.
+            tvec[n+1] = t_p
+            post = post_p
+
+            if n > NB:
+                # Increase counter (post-burn in only).
+                count = count + 1
+
+        else:
+            # Reject and update.
+            tvec[n+1] = tvec[n]
+
+
+        # Output progress updates to screen.
+        if n < NB-2:
+            if np.floor(100*(n+2)/NB) > np.floor(100*(n+1)/NB):
+                print("Burning in, progress: " + str(n+2) + "/" + str(NB) + " samples computed, " + str(np.floor(100*(n+2)/NB)) + "% complete.")
+
+        elif n == NB-2:
+            print("Burn in complete.")
+
+        elif n > NB-2:
+            if np.floor(100*(n-NB+2)/N) > np.floor(100*(n-NB+1)/N):
+                print("Progress: " + str(n-NB+2) + "/" + str(N) + " samples computed, " + str(np.floor(100*(n-NB+2)/N)) + "% complete.")
+
+
+    # Proportion of proposals accepted.
+    prop = count/N
+    print("Proportion of proposals accepted is " + str(prop) +  ".")
+
+    # Remove burn in samples to define chain.
+    chain = tvec[NB:]
+
+    # Output chain, proportion and full chain (with burn-in included).
+    return chain, prop, tvec
+
+
+def hist_plot(chain, nbins=100):
+    """
+    FUNCTION DESCRIPTION:
+    """
+    # Compute histogram.
+    hist, bin_edges = np.histogram(chain, nbins, density=1)
+
+    # Compute bin centres.
+    bin_centres = (bin_edges[1:] + bin_edges[:-1])/2
+
+
+    # Plot histogram manually.
+    fig, ax = myfigure()
+    ax.plot(bin_centres, hist, label='posterior')
+    plt.axvline(x=np.log(ip_data['lam']))
     ax.set_xlabel('theta')
     ax.set_ylabel('probability density')
     leg = ax.legend();
     plt.show()
-
-
-
-
-
 
 
 
@@ -199,9 +287,9 @@ if __name__ == "__main__":
 
 
     # Noise.
-    ip_data['seed'] = 0                                                           # seed RNG
-    np.random.seed(0)
-    ip_data['noise_ratio'] = 5/100                                                    # 5% signal-noise ratio
+    ip_data['seed'] = 8992                                                           # seed RNG
+    np.random.seed(ip_data['seed'])
+    ip_data['noise_ratio'] = 2/100                                                    # 5% signal-noise ratio
     ip_data['sig_rho'] = np.sqrt(ip_data['noise_ratio'] * np.mean(ip_data['G']))      # noise std
     ip_data['rho_noise'] = np.random.normal(0,ip_data['sig_rho'],(ip_data['nd'],1)).ravel()   # noise value
 
@@ -220,7 +308,7 @@ if __name__ == "__main__":
     ## ----------
 
     # Matrix representation of noisy data.
-    d_mat = np.reshape(ip_data["d"],(ip_data["nt"],ip_data["nx"]))
+    d_mat = np.reshape(ip_data['d'],(ip_data['nt'],ip_data['nx']))
 
     # Labels for y-axes.
     ylabs = ['u(x,0)', 'u(x,T/3)','u(x,2T/3)','u(x,T)']
@@ -257,3 +345,44 @@ if __name__ == "__main__":
     print(s)
 
     plot_posterior(prior,200)
+
+
+
+    # -----------------------
+    # SAMPLE USING RWMH MCMC:
+    # -----------------------
+
+    NB = int(1e4)  # no. burn in samples
+    N = int(1e5)   # no samples
+
+    nbins = 100  # number of histogram bins
+
+    sig_q = 5.5e-1  # proposal standard deviation
+
+    chain, prop, tvec = rwmh_posterior(N, NB, prior, ip_data, sig_q)
+
+
+
+    # --------------
+    # EXAMINE CHAIN:
+    # --------------
+
+    # Choose random set of points to plot.
+    ran_ind = np.random.randint(1,N-1002)
+    chain_plot = chain[ran_ind:ran_ind+1000]
+
+    # Plot section of chain.
+    fig, ax = myfigure()
+    ax.plot(range(1,1001), chain_plot)
+    plt.axhline(y=np.log(ip_data['lam']))
+    ax.set_xlabel('iterate, n')
+    ax.set_ylabel('theta')
+    plt.show(block=False)
+
+
+
+    # ---------------
+    # Plot Histogram:
+    # ---------------
+
+    hist_plot(chain)
