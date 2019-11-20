@@ -353,6 +353,41 @@ def hist_plot(hist, bin_centres):
 
 
 
+def KL_div(x, p, q):
+    """
+    Compute the Kullback-Leibler divergence
+        D_{KL}(P||Q)
+    between two distributions P and Q with densities p and q.
+
+    Parameters:
+    -----------
+    x : array
+        Points at which p and q are evaluated.
+    p,q : arrays
+        Evaluations of the densities of P and Q at the points x.
+
+    Returns:
+    --------
+    The KL divergence between P and Q.
+    """
+
+    if np.count_nonzero(q) > 0:
+        print('p must be absolutely continuous wrt q.')
+        return
+
+    # Evaluate integrand.
+    temp = p*np.log(p/q);
+
+    # Deal with case where p(i)=0 (using fact xlogx = 0 in limit x-->0.
+    temp(np.isnan(temp)) = 0;
+    temp(np.isinf(temp)) = 0;
+
+    # Approximate integral.
+    KL = np.trapz(temp, x);
+################################################################################
+
+
+
 
 #####################################
 ###  ---  EXAMPLE EXECUTION  ---  ###
@@ -432,7 +467,7 @@ if __name__ == "__main__":
     # -----------------------
 
     NB = int(1e3)  # number of burn in samples
-    N = int(5e4)   # number of samples
+    N = int(1e4)   # number of samples
 
     nbins = 100  # number of histogram bins
 
@@ -468,7 +503,7 @@ if __name__ == "__main__":
     # ---------------
 
     # Compute histogram.
-    hist, bin_centres, bin_edges = myhistogram(chain)
+    hist, bin_centres, bin_edges = myhistogram(chain, nbins=100)
 
     # Plot histogram of chain using default number of bins.
     hist_plot(hist, bin_centres)
