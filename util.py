@@ -401,7 +401,7 @@ if __name__ == "__main__":
     # -----------------------
 
     NB = int(1e3)  # number of burn in samples
-    N = int(1e5)   # number of samples
+    N = int(5e4)   # number of samples
 
     nbins = 100  # number of histogram bins
 
@@ -440,3 +440,9 @@ if __name__ == "__main__":
     # Plot histogram of chain using default number of bins.
     hist_plot(chain)
     ############################################################################
+
+
+
+
+
+    print(ip_data['G'])

@@ -60,6 +60,7 @@ ax.plot(tv,  pv[2], '-g', label='posterior3')
 ax.plot(tv, p0v[2], ':g', label='prior3')
 
 plt.axvline(x=np.log(ip_data['lam']), color='c', label='truth')
+
 ax.set_xlabel('theta')
 ax.set_ylabel('probability density')
 leg = ax.legend();
