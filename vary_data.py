@@ -41,9 +41,10 @@ ip_data3['t_obs'] = 2*ip_data['T']/3
 ip_data3['nx'] = 1                                                   # number of spatial measurements
 ip_data3['x_obs'] = 0.8   # observation locations
 
-print(ip_data['G'][8])
 
-"""
+
+#print(ip_data['G'][8])
+
 # True observations.
 ip_data3['G'] = ip_data['G'][8]
 ip_data3['nd'] = ip_data3['nx']*ip_data3['nt']
@@ -103,4 +104,3 @@ ax.set_xlabel('theta')
 ax.set_ylabel('probability density')
 leg = ax.legend();
 plt.show()
-"""
