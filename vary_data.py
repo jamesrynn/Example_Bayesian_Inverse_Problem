@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 from util_fig import myfigure
+from copy import deepcopy
 
 # Unpickle the inverse problem data.
 pickle_in = open("ip_data.pickle","rb")
@@ -11,7 +12,7 @@ ip_data = pickle.load(pickle_in)
 
 
 ## Single Time point.
-ip_data2 = ip_data
+ip_data2 = deepcopy(ip_data)
 
 # Time.
 ip_data2['nt'] = 1
@@ -31,7 +32,7 @@ ip_data2['d'] = ip_data2['G'] + ip_data2['rho_noise']
 
 
 ## Single time point, single location.
-ip_data3 = ip_data
+ip_data3 = deepcopy(ip_data)
 
 # Time.
 ip_data3['nt'] = 1
@@ -46,11 +47,11 @@ ip_data3['x_obs'] = 0.8   # observation locations
 #print(ip_data['G'][8])
 
 # True observations.
-ip_data3['G'] = ip_data['G'][8]
+ip_data3['G'] = ip_data['G'][7]
 ip_data3['nd'] = ip_data3['nx']*ip_data3['nt']
 
 # Noise.
-ip_data3['rho_noise'] = ip_data['rho_noise'][8]
+ip_data3['rho_noise'] = ip_data['rho_noise'][7]
 
 # Noisy data.
 ip_data3['d'] = ip_data3['G'] + ip_data3['rho_noise']
@@ -79,7 +80,7 @@ pv = np.zeros((3,Nt))  # Posterior evaluations.
 
 # Evaluate posterior.
 for n in range(Nt):
-    pv[0,n], p0v[0,n], dummy1 = util.posterior(tv[n], prior, ip_data)
+    pv[0,n], p0v[n], dummy1 = util.posterior(tv[n], prior, ip_data)
     pv[1,n], dummy2,   dummy3 = util.posterior(tv[n], prior, ip_data2)
     pv[2,n], dummy4,   dummy5 = util.posterior(tv[n], prior, ip_data3)
 

@@ -287,9 +287,9 @@ def rwmh_posterior(N, NB, prior, ip_data, sig_q):
 
 
 
-def hist_plot(chain, nbins=100):
+def myhistogram(chain, nbins=None, bin_edges=None):
     """
-    Plot a histogram of the input Markov chain.
+    Compute a histogram of the input Markov chain.
 
     Parameters:
     -----------
@@ -300,17 +300,48 @@ def hist_plot(chain, nbins=100):
 
     Returns:
     --------
-    Plot a histogram of the input Markov chain.
+    hist : array
+        Probability density values.
+    bin_centres : array
+        Bin centre values.
+    bin_edges : array
+        Bin edge values.
     """
 
     # Compute histogram.
-    hist, bin_edges = np.histogram(chain, nbins, density=1)
+    if nbins is None:
+        hist, bin_edges = np.histogram(chain, bins = bin_edges, density=1)
+    elif bin_edges is None:
+        hist, bin_edges = np.histogram(chain, bins = nbins, density=1)
+    else:
+        print("Error: You must specify either a number of bins or the bin edges.")
+        return
 
     # Compute bin centres.
     bin_centres = (bin_edges[1:] + bin_edges[:-1])/2
 
+    return hist, bin_centres, bin_edges
+################################################################################
 
-    # Plot histogram manually.
+
+
+def hist_plot(hist, bin_centres):
+    """
+    Plot a histogram of the input Markov chain.
+
+    Parameters:
+    -----------
+    hist : array
+        Probability density values.
+    bin_centres : array
+        Bin centre values.
+
+    Returns:
+    --------
+    Plot the input histogram.
+    """
+
+    # Plot histogram (manually).
     fig, ax = myfigure()
     ax.plot(bin_centres, hist, label='posterior')
     plt.axvline(x=np.log(ip_data['lam']), color='r', label='truth')
@@ -436,9 +467,11 @@ if __name__ == "__main__":
     # PLOT HISTOGRAM:
     # ---------------
 
+    # Compute histogram.
+    hist, bin_centres, bin_edges = myhistogram(chain)
 
     # Plot histogram of chain using default number of bins.
-    hist_plot(chain)
+    hist_plot(hist, bin_centres)
     ############################################################################
 
 
