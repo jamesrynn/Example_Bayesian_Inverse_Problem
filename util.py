@@ -53,6 +53,44 @@ def uxt(x,t,lam):
 
 
 
+def uxt2(x,t,lam):
+	"""
+	Evaluation of the function
+		u(x,t;lambda) = (3sin(pi*x) + sin(3*pi*x))exp(-lambda*pi^2*t),
+	which is the solution to the forward problem PDE.
+
+	Parameters:
+	-----------
+	x : array_like
+		Spatial locations at which function is to be evaluated.
+	t : array_like
+		Time points at which function is to be evaluated.
+	lam : float
+		Value of the thermal conductivity parameter.
+
+	Returns:
+	--------
+	uxt : ndarray
+		Value of the function u at each point in x and time in t for the given
+		value of lambda.
+	"""
+	x = np.array(x)
+	t = np.array(t)
+	lam = np.array(lam)
+
+	# Spatial locations.
+	X = 3*np.sin(np.pi*x) + np.sin(3*np.pi*x)
+
+	# Time points.
+	T = np.exp(-math.pow(np.pi,2)*np.outer(lam,t))
+
+	# Compute solution through outer product and return values.
+	return np.stack(T*i for i in x)
+################################################################################
+
+
+
+
 def m_s_from_mu_sig(mu,sig):
     """
     Convert hyperparameters (mu,sigma) of Gaussian distribution to (m,s)
@@ -163,8 +201,8 @@ def plot_posterior(prior, Nt=100):
 
     # Evaluate prior and likelihood.
     for n in range(Nt):
-        #print(n)
         dummy_var, p0v[n], Lv[n] = posterior(tv[n], prior, ip_data)
+
 
     # Evaluate posterior.
     pv = p0v*Lv
@@ -379,8 +417,8 @@ def KL_div(x, p, q):
     temp = p*np.log(p/q);
 
     # Deal with case where p(i)=0 (using fact xlogx = 0 in limit x-->0.
-    temp(np.isnan(temp)) = 0;
-    temp(np.isinf(temp)) = 0;
+    temp[np.isnan(temp)] = 0;
+    temp[np.isinf(temp)] = 0;
 
     # Approximate integral.
     KL = np.trapz(temp, x);
@@ -510,7 +548,3 @@ if __name__ == "__main__":
     ############################################################################
 
 
-
-
-
-    print(ip_data['G'])
