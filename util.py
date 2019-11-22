@@ -82,10 +82,12 @@ def uxt2(x,t,lam):
 	X = 3*np.sin(np.pi*x) + np.sin(3*np.pi*x)
 
 	# Time points.
-	T = np.exp(-math.pow(np.pi,2)*np.outer(lam,t))
+	T = np.exp(-math.pow(np.pi,2)*np.outer(t,lam))
+
+#	print(T)
 
 	# Compute solution through outer product and return values.
-	return np.stack(T*i for i in x)
+	return T, np.stack([T*i for i in x], axis=1)
 ################################################################################
 
 
