@@ -31,65 +31,43 @@ def uxt(x,t,lam):
         Spatial locations at which function is to be evaluated.
     t : array_like
         Time points at which function is to be evaluated.
-    lam : float
+    lam : array_like
         Value of the thermal conductivity parameter.
 
     Returns:
     --------
     uxt : ndarray
-        Value of the function u at each point in x and time in t for the given
+        Value of the function u at each point in x and time in t for each given
         value of lambda.
     """
 
-    # Spatial locations.
-    X = np.array(3*np.sin(np.pi*x) + np.sin(3*np.pi*x))
+    # Ensure inputs are ndarrays.
+    x = np.array(x)
+    t = np.array(t)
+    lam = np.array(lam)
 
-    # Time points.
-    T = np.array(np.exp(-lam * math.pow(np.pi,2) * t))
 
-    # Compute solution through outer product and return values.
-    return np.outer(T, X)
+    # Evaluate spatial component.
+    X = 3*np.sin(np.pi*x) + np.sin(3*np.pi*x)
+
+
+    # If lambda is scalar valued, compute a single outer product.
+    if lam.ndim==0:
+        T = np.array(np.exp(-lam * math.pow(np.pi,2) * t))
+        U = np.outer(T,X)
+
+
+    # If lambda is vector valued, stack a number of outer products.
+    elif lam.ndim==1:
+
+        # Evaluate temporal component for each lambda.
+        T = np.exp(-math.pow(np.pi,2)*np.outer(lam,t))
+
+        # Compute solution through stacking scaled outer products for each x.
+        U = np.stack([T.T*i for i in X])
+
+    return U
 ################################################################################
-
-
-
-def uxt2(x,t,lam):
-	"""
-	Evaluation of the function
-		u(x,t;lambda) = (3sin(pi*x) + sin(3*pi*x))exp(-lambda*pi^2*t),
-	which is the solution to the forward problem PDE.
-
-	Parameters:
-	-----------
-	x : array_like
-		Spatial locations at which function is to be evaluated.
-	t : array_like
-		Time points at which function is to be evaluated.
-	lam : float
-		Value of the thermal conductivity parameter.
-
-	Returns:
-	--------
-	uxt : ndarray
-		Value of the function u at each point in x and time in t for the given
-		value of lambda.
-	"""
-	x = np.array(x)
-	t = np.array(t)
-	lam = np.array(lam)
-
-	# Spatial locations.
-	X = 3*np.sin(np.pi*x) + np.sin(3*np.pi*x)
-
-	# Time points.
-	T = np.exp(-math.pow(np.pi,2)*np.outer(t,lam))
-
-#	print(T)
-
-	# Compute solution through outer product and return values.
-	return T, np.stack([T*i for i in x], axis=1)
-################################################################################
-
 
 
 
@@ -147,14 +125,18 @@ def posterior(theta, prior, ip_data):
 
     Returns:
     --------
-    posterior : float
+    posterior : nparray
         Value of the (un-normalised) posterior density evaluated at the input
         theta.
-    prior : float
+    prior : nparray
         Value of the prior density evaluated at the input theta.
-    likelihood : float
+    likelihood : nparray
         Value of the likelihood function evaluated at the input theta.
     """
+
+     # Ensure input theta is nparray.
+    theta = np.array(theta)
+
 
     # Prior density.
     if prior[0] == "unif":
@@ -162,11 +144,19 @@ def posterior(theta, prior, ip_data):
     elif prior[0] == "normal":
         p0 = Norm.pdf(theta, prior[1], prior[2]) # Gaussian pdf
 
-    # Forward evaluation.
-    F = uxt(ip_data['x_obs'], ip_data['t_obs'], np.exp(theta)).ravel()
 
-    # Evaluate likelihood (multivariate Normal).
-    L = mvNorm.pdf(F, ip_data['d'], ip_data['sig_rho'])
+    # Single theta value.
+    if theta.ndim == 0:
+        F = uxt(ip_data['x_obs'], ip_data['t_obs'], np.exp(theta)).ravel()
+        L = mvNorm.pdf(F, ip_data['d'], ip_data['sig_rho'])
+
+    # Multiple theta values.
+    elif theta.ndim == 1:
+        F = uxt(ip_data['x_obs'], ip_data['t_obs'], np.exp(theta))
+        F = F.reshape(-1, F.shape[2])
+
+        L = np.stack([mvNorm.pdf(F[:,i], ip_data['d'], ip_data['sig_rho']) for i in range(theta.shape[0])])
+
 
     # Return evaluation of the posterior, prior and likelihood.
     return p0*L, p0, L
@@ -197,17 +187,8 @@ def plot_posterior(prior, Nt=100):
     # Theta values for evaluating the posterior.
     tv = np.linspace(0,3,Nt)
 
-    # Allocate storage for likelihood and posterior evaluations.
-    p0v = np.zeros(Nt)   # prior evaluations
-    Lv = np.zeros(Nt)    # likelihood evaluations
-
-    # Evaluate prior and likelihood.
-    for n in range(Nt):
-        dummy_var, p0v[n], Lv[n] = posterior(tv[n], prior, ip_data)
-
-
-    # Evaluate posterior.
-    pv = p0v*Lv
+    # Evaluate posterior, prior and likelihood.
+    pv, p0v, Lv = posterior(tv, prior, ip_data)
 
     # Normalise.
     p0v = p0v/np.trapz(p0v,tv)
@@ -548,5 +529,3 @@ if __name__ == "__main__":
     # Plot histogram of chain using default number of bins.
     hist_plot(hist, bin_centres)
     ############################################################################
-
-
