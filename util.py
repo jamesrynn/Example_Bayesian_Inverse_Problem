@@ -108,10 +108,6 @@ def posterior(theta, prior, ip_data):
     """
     Posterior density function.
 
-    # NOTE: Could vectorise this to take an array of theta values.
-
-    # NOTE 2: could be more efficient by computing posterior only if required.
-
     Parameters:
     -----------
     theta : float
