@@ -37,10 +37,10 @@ def myfigure(nrows=1, ncols=1, fig_ratio=0.71, fig_scale=1):
     # Use tex and correct font
 
     mpl.rcParams['font.serif'] = ['computer modern roman']
-    mpl.rcParams['mathtext.fontset'] = 'custom'
-    mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-    mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-    mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+    #mpl.rcParams['mathtext.fontset'] = 'custom'
+    #mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+    #mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+    #mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
     mpl.rcParams['font.size'] = size
 
     # MATLAB default (see MATLAB Axes Properties documentation)
