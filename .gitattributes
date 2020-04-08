@@ -1,0 +1,2 @@
+# Label jupyter notebooks as documentation to avoid misleading language stats.
+*.ipynb linguist-documentation
